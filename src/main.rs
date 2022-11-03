@@ -2,35 +2,44 @@
 use std::env;
 #[allow(unused_imports)]
 use std::fs;
-use std::io::BufReader;
-use std::net::{TcpListener, TcpStream};
-use std::io::{Result, Write};
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufReader;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::io::AsyncWrite;
+use std::io::Result;
 use std::str::from_utf8;
 
 mod resp;
 use resp::{token::RESPToken, parser::RESPParser};
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
+#[tokio::main]
+async fn main() {
+    let mut listener = TcpListener::bind("127.0.0.1:6379")
+        .await.expect("Unable to listen to port");
     println!("Listening from localhost:6379");
 
-    match listener.accept() {
-        Ok((socket, addr)) => {
-            println!("accepted new client: {:?}", addr);
-            
-            handle_connection(socket).unwrap_or_else(|err| {
-                println!("Connection closed unexpectedly: '{}'", err)
-            });
-        },
-        Err(e) => println!("couldn't accept client: {:?}", e),
+    loop {
+        match listener.accept().await {
+            Ok((socket, addr)) => {
+                println!("accepted new client: {:?}", addr);
+
+                tokio::spawn(async move {
+                    handle_connection(socket).await.unwrap_or_else(|err| {
+                        println!("Connection closed unexpectedly: '{}'", err)
+                    });
+                });
+            },
+            Err(e) => println!("couldn't accept client: {:?}", e),
+        }
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> Result<()> {
+async fn handle_connection(mut stream: TcpStream) -> Result<()> {
+    let (reader, mut writer) = stream.split();
+    let mut reader = BufReader::new(reader);
     loop {
         // Receive in RESP, Respond in RESP
-        let mut reader = BufReader::new(&stream);
-        let request = RESPParser::parse::<&TcpStream>(&mut reader)
+        let request = RESPParser::parse(&mut reader).await
             .unwrap_or_else(|err| {
                 // Catch parser error and default to empty message
                 println!("Parsing error: {:?}",err);
@@ -46,15 +55,16 @@ fn handle_connection(mut stream: TcpStream) -> Result<()> {
 
         // Hardcode PONG response
         let pong_response: String = RESPToken::SimpleString("PONG".to_owned()).to_string();
-        reply(&mut stream, pong_response.as_bytes())?;
+        let response_buf = pong_response.as_bytes();
+        reply(&mut writer, response_buf).await?;
     }
 
     Ok(())
 }
 
-fn reply(mut stream: &TcpStream, buf: &[u8]) -> Result<()> {
+async fn reply<W: AsyncWrite + Unpin>(writer: &mut W, buf: &[u8]) -> Result<()> {
     println!("Sending: {:?}", from_utf8(buf).unwrap());
-    stream.write(buf)?;
+    writer.write_all(buf).await?;
 
     Ok(())
 }

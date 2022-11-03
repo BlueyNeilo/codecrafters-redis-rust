@@ -1,5 +1,7 @@
-use std::{io::{self, BufReader, BufRead, Read}, num::ParseIntError};
+use std::{io, num::ParseIntError};
+use tokio::io::AsyncBufReadExt;
 use super::token::RESPToken;
+use bytes::Bytes;
 
 pub type RESPMessage = Vec<RESPToken>;
 
@@ -27,15 +29,15 @@ pub struct RESPParser;
 
 impl RESPParser {
     // Parses one token (or array of tokens) at time
-    pub fn parse<R: Read>(
-        reader: &mut BufReader<R>
+    pub async fn parse<R: AsyncBufReadExt + Unpin>(
+        reader: &mut R
     ) -> Result<RESPMessage, RESPParserError> {
         let mut parsed_message = vec![];
         let mut remaining_tokens = 1;
         let mut token_buf: String = String::new();
     
         while remaining_tokens > 0 {
-            RESPParser::read_token(reader, &mut token_buf)?;
+            RESPParser::read_token(reader, &mut token_buf).await?;
             let prefix = token_buf.get(..1)
                 .ok_or(RESPParserError::InvalidToken(token_buf.to_owned()))?;
 
@@ -50,8 +52,8 @@ impl RESPParser {
                     } else {
                         let string_size = string_size.parse::<u32>()?;
 
-                        RESPParser::read_token(reader, &mut token_buf)?;
-                        let bulk_string = token_buf.trim().to_owned();
+                        RESPParser::read_token(reader, &mut token_buf).await?;
+                        let bulk_string = Bytes::from(token_buf.trim().to_owned());
                         
                         parsed_message.push(
                             RESPToken::BulkString(string_size, bulk_string)
@@ -79,12 +81,12 @@ impl RESPParser {
         Ok(parsed_message)
     }
     
-    fn read_token<R: Read>(
-        reader: &mut BufReader<R>,
+    async fn read_token<R: AsyncBufReadExt + Unpin>(
+        reader: &mut R,
         token_buf: &mut String
     ) -> io::Result<()> {
         token_buf.clear();
-        reader.read_line(token_buf)?;
+        reader.read_line(token_buf).await?;
 
         println!("Read token: {:?}", token_buf);
         Ok(())

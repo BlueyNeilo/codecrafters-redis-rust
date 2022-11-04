@@ -25,6 +25,9 @@ impl From<io::Error> for RESPParserError {
     }
 }
 
+/**
+ * Reads tokens from buffer until a RESP frame is read
+ */
 pub struct RESPParser;
 
 impl RESPParser {

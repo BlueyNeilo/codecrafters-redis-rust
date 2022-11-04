@@ -10,7 +10,7 @@ use std::io::Result;
 use std::str::from_utf8;
 
 mod resp;
-use resp::{token::RESPToken, parser::RESPParser};
+use resp::{frame::RESPFrame, parser::RESPParser, token::RESPToken};
 
 #[tokio::main]
 async fn main() {
@@ -53,10 +53,11 @@ async fn handle_connection(mut stream: TcpStream) -> Result<()> {
 
         println!("Request: {:?}", request);
 
+        // TODO: use interpreter instead
         // Hardcode PONG response
-        let pong_response: String = RESPToken::SimpleString("PONG".to_owned()).to_string();
-        let response_buf = pong_response.as_bytes();
-        reply(&mut writer, response_buf).await?;
+        let response_token: RESPToken = RESPFrame::Simple("PONG".to_owned()).into();
+        let response_string: String = response_token.to_string();
+        reply(&mut writer, response_string.as_bytes()).await?;
     }
 
     Ok(())

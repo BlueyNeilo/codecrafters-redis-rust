@@ -1,6 +1,4 @@
-use bytes::Buf;
-
-use super::frame::RESPFrame;
+use super::{frame::RESPFrame, command::RedisCommand};
 
 /**
  * Interprets RESP frames and talks to redis storage interface
@@ -16,14 +14,14 @@ impl RESPInterpreter {
             RESPFrame::Array(elements) => {
                 match elements.as_slice() {
                     [RESPFrame::Bulk(command), RESPFrame::Bulk(value)] => {
-                        match command.bytes() {
-                            b"ECHO" => RESPFrame::Bulk(value.to_owned()),
+                        match command.into() {
+                            RedisCommand::ECHO => RESPFrame::Bulk(value.to_owned()),
                             _ => pong_response
                         }
                     },
                     [RESPFrame::Bulk(command)] => {
-                        match command.bytes() {
-                            b"PING" => pong_response,
+                        match command.into() {
+                            RedisCommand::PING => pong_response,
                             _ => pong_response
                         }
                     }

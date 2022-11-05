@@ -7,3 +7,4 @@ pub mod token;
 pub mod parser;
 pub mod frame;
 pub mod interpreter;
+pub mod command;

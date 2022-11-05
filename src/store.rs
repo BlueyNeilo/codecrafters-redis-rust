@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::resp::command::SetCommandFlags;
+
 /**
  * Storage implementation for Redis
  * In-memory implementation
@@ -18,7 +20,7 @@ impl RedisStore {
         self.store.get(&key).map(|s| s.to_owned())
     }
 
-    pub fn set(&mut self, key: String, value: String) {
+    pub fn set(&mut self, key: String, value: String, flags: SetCommandFlags) {
         println!("Set: {}, {}", key, value);
         self.store.insert(key, value);
     }

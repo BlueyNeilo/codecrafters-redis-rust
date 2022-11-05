@@ -99,3 +99,10 @@ impl RESPParser {
         token.get(1..).unwrap().trim().to_owned()
     }
 }
+
+pub fn to_string(message: RESPMessage) -> String {
+    message.into_iter()
+        .map(|token| token.to_string())
+        .collect::<Vec<String>>()
+        .join("")
+}

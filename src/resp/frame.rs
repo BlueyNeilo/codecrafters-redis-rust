@@ -36,7 +36,7 @@ impl From<RESPToken> for RESPFrame {
         match token {
             RESPToken::SimpleString(s) => RESPFrame::Simple(s),
             RESPToken::Error(s) => RESPFrame::Error(s),
-            RESPToken::Integer(i) => RESPFrame::Integer(i),
+            RESPToken::Integer(n) => RESPFrame::Integer(n),
             RESPToken::BulkString(_, s) => RESPFrame::Bulk(s),
             RESPToken::Null => RESPFrame::Null,
             RESPToken::ArraySize(_) => unreachable!(),
@@ -49,7 +49,7 @@ impl From<RESPFrame> for RESPMessage {
         match frame {
             RESPFrame::Array(data) => {
                 let mut message = vec![RESPToken::ArraySize(data.len() as u32)];
-                
+
                 for child in data {
                     message.push(child.into())
                 }
@@ -65,7 +65,7 @@ impl From<RESPFrame> for RESPToken {
         match frame {
             RESPFrame::Simple(s) => RESPToken::SimpleString(s),
             RESPFrame::Error(s) => RESPToken::Error(s),
-            RESPFrame::Integer(i) => RESPToken::Integer(i),
+            RESPFrame::Integer(n) => RESPToken::Integer(n),
             RESPFrame::Bulk(s) => RESPToken::BulkString(s.len() as u32, s),
             RESPFrame::Null => RESPToken::Null,
             RESPFrame::Array(_) => unimplemented!("RESP Frame array doesn't map to a token"),

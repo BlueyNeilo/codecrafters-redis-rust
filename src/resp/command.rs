@@ -6,6 +6,8 @@ use bytes::Bytes;
 pub enum RedisCommand {
     PING,
     ECHO,
+    GET,
+    SET,
     UNDEFINED
 }
 
@@ -14,6 +16,8 @@ impl From<&Bytes> for RedisCommand {
         match command.to_ascii_uppercase().as_slice() {
             b"PING" => Self::PING,
             b"ECHO" => Self::ECHO,
+            b"GET" => Self::GET,
+            b"SET" => Self::SET,
             _ => Self::UNDEFINED
         }
     }

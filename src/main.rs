@@ -2,15 +2,19 @@
 use std::env;
 #[allow(unused_imports)]
 use std::fs;
+use std::str::from_utf8;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::AsyncWrite;
+use tokio::sync::Mutex;
 use std::io::Result;
-use std::str::from_utf8;
 
 mod resp;
+mod store;
 use resp::{interpreter::RESPInterpreter, parser::{RESPParser, RESPMessage}};
+use store::RedisStore;
 
 #[tokio::main]
 async fn main() {
@@ -18,13 +22,16 @@ async fn main() {
         .await.expect("Unable to listen to port");
     println!("Listening from localhost:6379");
 
+    let store = Arc::new(Mutex::new(RedisStore::new()));
+
     loop {
         match listener.accept().await {
             Ok((socket, addr)) => {
                 println!("accepted new client: {:?}", addr);
-
+                let interpreter = RESPInterpreter::new(Arc::clone(&store));
+                
                 tokio::spawn(async move {
-                    handle_connection(socket).await.unwrap_or_else(|err| {
+                    handle_connection(socket, &interpreter).await.unwrap_or_else(|err| {
                         println!("Connection closed unexpectedly: '{}'", err)
                     });
                 });
@@ -34,7 +41,7 @@ async fn main() {
     }
 }
 
-async fn handle_connection(mut stream: TcpStream) -> Result<()> {
+async fn handle_connection(mut stream: TcpStream, interpreter: &RESPInterpreter) -> Result<()> {
     let (reader, mut writer) = stream.split();
     let mut reader = BufReader::new(reader);
     loop {
@@ -52,7 +59,7 @@ async fn handle_connection(mut stream: TcpStream) -> Result<()> {
         }
         println!("Request: {:?}", request);
 
-        let response_message: RESPMessage = RESPInterpreter::interpret(&(request.into())).into();
+        let response_message: RESPMessage = interpreter.interpret(&(request.into())).await.into();
         println!("Response: {:?}", response_message);
 
         let response_string: String = resp::parser::to_string(response_message);

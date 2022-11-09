@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use bytes::Bytes;
+use bytes::{Bytes, Buf};
 
 use super::{
     frame::RESPFrame, 
@@ -34,8 +34,9 @@ impl RESPInterpreter {
                             RedisCommand::GET => {
                                 if let [RESPFrame::Bulk(key)] = args {
                                     let shared_store = RedisStore::get_shared_store();
-                                    let store = shared_store.lock().await;
-                                    if let Some(store_value) = store.get(bytes_to_string(key)) {
+                                    let mut store = shared_store.lock().await;
+
+                                    if let Some(store_value) = store.get(&bytes_to_string(key)) {
                                         RESPFrame::Bulk(Bytes::from(store_value.as_bytes().to_owned()))
                                     } else {
                                         RESPFrame::Null
@@ -50,11 +51,27 @@ impl RESPInterpreter {
 
                                     let shared_store = RedisStore::get_shared_store();
                                     let mut store = shared_store.lock().await;
-                                    store.set(bytes_to_string(key), bytes_to_string(value), set_flags);
+                                    
+                                    let prev_value = if set_flags.get_flag {
+                                        store.get(&bytes_to_string(key))
+                                    } else { None };
 
-                                    RESPFrame::Simple("OK".to_owned())
+                                    let update_success = store.set(bytes_to_string(key), bytes_to_string(value), &set_flags);
+
+                                    if set_flags.get_flag {
+                                        match prev_value {
+                                            Some(value) => RESPFrame::Bulk(Bytes::from(value.as_bytes().to_bytes())),
+                                            None => RESPFrame::Null,
+                                        }
+                                    } else {
+                                        if update_success { 
+                                            RESPFrame::Simple("OK".to_owned())
+                                        } else {
+                                            RESPFrame::Null
+                                        }
+                                    }
                                 } else {
-                                    pong_response
+                                    RESPFrame::Null
                                 }
                             },
                             _ => pong_response
@@ -91,14 +108,19 @@ impl RESPInterpreter {
             }
         }
 
-        if let [RESPFrame::Bulk(ttl_type), RESPFrame::Integer(ttl)] = options_3 {
-            match ttl_type.to_ascii_uppercase().as_slice() {
-                b"EX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EX(*ttl)),
-                b"PX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PX(*ttl)),
-                b"EXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EXAT(*ttl)),
-                b"PXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PXAT(*ttl)),
-                _ => {}
-            }
+        if let [RESPFrame::Bulk(ttl_type), RESPFrame::Bulk(ttl_bytes)] = options_3 {
+            if let Some(ttl)= from_utf8(ttl_bytes.bytes()).unwrap()
+                .to_owned()
+                .parse::<u128>()
+                .ok() {
+                    match ttl_type.to_ascii_uppercase().as_slice() {
+                        b"EX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EX(ttl as u64)),
+                        b"PX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PX(ttl)),
+                        b"EXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EXAT(ttl as u64)),
+                        b"PXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PXAT(ttl)),
+                        _ => {}
+                    }
+                }
         }
 
         if let [RESPFrame::Bulk(keepttl_option)] = options_3 {

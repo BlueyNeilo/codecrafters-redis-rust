@@ -41,9 +41,9 @@ pub enum SetCommandExistFlag {
 }
 
 pub enum SetCommandTTLFlag {
-    EX(i64),       // TTL duration (seconds)
-    PX(i64),       // TTL duration (milliseconds)
-    EXAT(i64),     // Set expiry at exact unix time (seconds)
-    PXAT(i64),     // Set expiry at exact unix time (milliseconds)
+    EX(u64),    // TTL duration (seconds)
+    PX(u128),   // TTL duration (milliseconds)
+    EXAT(u64),  // Set expiry at exact unix time (seconds)
+    PXAT(u128), // Set expiry at exact unix time (milliseconds)
     KEEPTTL,    // Keep existing TTL when setting value
 }

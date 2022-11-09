@@ -1,6 +1,6 @@
 use std::{str::from_utf8, sync::Arc};
 
-use bytes::{Bytes, Buf};
+use bytes::Bytes;
 use tokio::sync::Mutex;
 
 use super::{

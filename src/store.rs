@@ -19,7 +19,7 @@ static STORE_INIT: Once = Once::new();
 impl RedisStore {
     pub fn init() {
         STORE_INIT.call_once(|| unsafe {
-            // This is safe because static store can only initialise once from this method only
+            // This is safe because static store can only initialise/modify once from this method only
             SHARED_STORE = Some(Arc::new(Mutex::new(RedisStore::default())));
         })
     }
@@ -35,6 +35,7 @@ impl RedisStore {
 
         unsafe {
             // This is safe because static store is protected behind a thread-safe reference
+            // It can not give any references to shared store until it is initialised
             return Arc::clone(&SHARED_STORE.as_mut().unwrap());
         }
     }

@@ -1,5 +1,4 @@
 use std::str::from_utf8;
-use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 use tokio::net::{TcpListener, TcpStream};
@@ -19,16 +18,13 @@ pub async fn listen() {
         .await.expect("Unable to listen to port");
     println!("Listening from localhost:6379");
 
-    let store = RedisStore::get_shared_store();
-
     loop {
         match listener.accept().await {
             Ok((socket, addr)) => {
                 println!("accepted new client: {:?}", addr);
-                let interpreter = RESPInterpreter::new(Arc::clone(&store));
                 
                 tokio::spawn(async move {
-                    handle_connection(socket, &interpreter).await.unwrap_or_else(|err| {
+                    handle_connection(socket).await.unwrap_or_else(|err| {
                         println!("Connection closed unexpectedly: '{}'", err)
                     });
                 });
@@ -38,7 +34,7 @@ pub async fn listen() {
     }
 }
 
-async fn handle_connection(mut stream: TcpStream, interpreter: &RESPInterpreter) -> Result<()> {
+async fn handle_connection(mut stream: TcpStream) -> Result<()> {
     let (reader, mut writer) = stream.split();
     let mut reader = BufReader::new(reader);
     loop {
@@ -56,7 +52,7 @@ async fn handle_connection(mut stream: TcpStream, interpreter: &RESPInterpreter)
         }
         println!("Request: {:?}", request);
 
-        let response_message: RESPMessage = interpreter.interpret(&(request.into())).await.into();
+        let response_message: RESPMessage = RESPInterpreter::interpret(&(request.into())).await.into();
         println!("Response: {:?}", response_message);
 
         let response_string: String = resp::parser::to_string(response_message);

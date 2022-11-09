@@ -1,7 +1,6 @@
-use std::{str::from_utf8, sync::Arc};
+use std::str::from_utf8;
 
 use bytes::Bytes;
-use tokio::sync::Mutex;
 
 use super::{
     frame::RESPFrame, 
@@ -12,16 +11,10 @@ use super::{
 /**
  * Interprets RESP frames and talks to redis store interface
  */
-pub struct RESPInterpreter {
-    store: Arc<Mutex<RedisStore>>
-}
+pub struct RESPInterpreter;
 
 impl RESPInterpreter {
-    pub fn new(store: Arc<Mutex<RedisStore>>) -> Self {
-        Self { store: Arc::clone(&store) }
-    }
-    
-    pub async fn interpret(&self, frame: &RESPFrame) -> RESPFrame {
+    pub async fn interpret(frame: &RESPFrame) -> RESPFrame {
         // Take PING return PONG (also hardcoded for any unimplemented requests)
         let pong_response = RESPFrame::Simple("PONG".to_owned());
         
@@ -40,7 +33,8 @@ impl RESPInterpreter {
                             },
                             RedisCommand::GET => {
                                 if let [RESPFrame::Bulk(key)] = args {
-                                    let store = self.store.lock().await;
+                                    let shared_store = RedisStore::get_shared_store();
+                                    let store = shared_store.lock().await;
                                     if let Some(store_value) = store.get(bytes_to_string(key)) {
                                         RESPFrame::Bulk(Bytes::from(store_value.as_bytes().to_owned()))
                                     } else {
@@ -54,7 +48,8 @@ impl RESPInterpreter {
                                 if let [RESPFrame::Bulk(key), RESPFrame::Bulk(value), options @ ..] = args {
                                     let set_flags = RESPInterpreter::calculate_set_flags(options);
 
-                                    let mut store = self.store.lock().await;
+                                    let shared_store = RedisStore::get_shared_store();
+                                    let mut store = shared_store.lock().await;
                                     store.set(bytes_to_string(key), bytes_to_string(value), set_flags);
 
                                     RESPFrame::Simple("OK".to_owned())

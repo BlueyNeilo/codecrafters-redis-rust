@@ -31,3 +31,24 @@ Note: This section is for stages 2 and beyond.
    slow the first time you run it. Subsequent runs will be fast.
 1. Commit your changes and run `git push origin master` to submit your solution
    to CodeCrafters. Test output will be streamed to your terminal.
+
+
+# My Notes
+
+The final solution to the codecrafters challenge is in branch `codecrafters-stage7`.
+
+In the main branch, I am solving the extra challenges using different dependencies which are incompatible with codecrafters CI.
+
+## Extra Challenges Planned
+
+- [ ] Write tests in rust that prove thread safety
+- [ ] Persistence + Recovery (RDB snapshot and/or Append-Only File)
+- [ ] High Availability communication + failover (Keep replica server in sync, replication id/offset)
+- [ ] Authentication
+- [ ] [Garbage collection on long-lived expired keys](https://redis.io/commands/expire/)
+- [ ] Handle other data types like sets/hashes
+
+## Additional References
+
+- [Redis Architecture](https://architecturenotes.co/redis/)
+- [Redis Command Docs](https://redis.io/commands/)

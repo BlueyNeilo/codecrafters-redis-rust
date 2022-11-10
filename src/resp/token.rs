@@ -27,3 +27,55 @@ impl RESPToken {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::RESPToken;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("PING", "+PING\r\n")]
+    #[case("", "+\r\n")]
+    #[case(" ", "+ \r\n")]
+    #[case("Hello world", "+Hello world\r\n")]
+    fn should_serialise_simple_string(#[case] simple: String, #[case] expected_str: String) {
+        assert_eq!(expected_str, RESPToken::SimpleString(simple).to_string())
+    }
+
+    #[rstest]
+    #[case("ERR", "-ERR\r\n")]
+    #[case("ERR bad message", "-ERR bad message\r\n")]
+    #[case("", "-\r\n")]
+    fn should_serialise_error(#[case] error: String, #[case] expected_str: String) {
+        assert_eq!(expected_str, RESPToken::Error(error).to_string())
+    }
+
+    #[rstest]
+    #[case(0, ":0\r\n")]
+    #[case(-10, ":-10\r\n")]
+    #[case(23, ":23\r\n")]
+    fn should_serialise_int(#[case] int: i64, #[case] expected_str: String) {
+        assert_eq!(expected_str, RESPToken::Integer(int).to_string())
+    }
+
+    #[rstest]
+    #[case(0,"*0\r\n")]
+    #[case(1,"*1\r\n")]
+    #[case(5,"*5\r\n")]
+    fn should_serialise_bulk_string(#[case] size: u32, #[case] expected_str: String) {
+        assert_eq!(expected_str, RESPToken::ArraySize(size).to_string())
+    }
+
+    #[test]
+    fn should_serialise_null() {
+        assert_eq!("$-1\r\n", RESPToken::Null.to_string())
+    }
+
+    #[rstest]
+    #[case(0,"*0\r\n")]
+    #[case(1,"*1\r\n")]
+    #[case(5,"*5\r\n")]
+    fn should_serialise_array(#[case] size: u32, #[case] expected_str: String) {
+        assert_eq!(expected_str, RESPToken::ArraySize(size).to_string())
+    }
+}

@@ -2,7 +2,6 @@ use std::str::from_utf8;
 
 use bytes::{Bytes, Buf};
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RESPToken {
     SimpleString(String),       // "+<STRING>\r\n"

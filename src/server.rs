@@ -10,7 +10,10 @@ use crate::store::RedisStore;
 
 
 pub async fn init() {
-    RedisStore::init()
+    tokio::spawn(async {
+        RedisStore::init();
+        println!("Server initialised")
+    });
 }
 
 pub async fn listen() {

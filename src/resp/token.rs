@@ -29,7 +29,7 @@ impl RESPToken {
 
 #[cfg(test)]
 mod tests {
-    use super::RESPToken;
+    use super::*;
     use rstest::rstest;
 
     #[rstest]
@@ -58,11 +58,15 @@ mod tests {
     }
 
     #[rstest]
-    #[case(0,"*0\r\n")]
-    #[case(1,"*1\r\n")]
-    #[case(5,"*5\r\n")]
-    fn should_serialise_bulk_string(#[case] size: u32, #[case] expected_str: String) {
-        assert_eq!(expected_str, RESPToken::ArraySize(size).to_string())
+    #[case(0, "", "$0\r\n\r\n")]
+    #[case(1, "a", "$1\r\na\r\n")]
+    #[case(5, "hello", "$5\r\nhello\r\n")]
+    #[case(12, "hello world!", "$12\r\nhello world!\r\n")]
+    fn should_serialise_bulk_string(#[case] size: u32, #[case] bulk: String, #[case] expected_str: String) {
+        assert_eq!(
+            expected_str,
+            RESPToken::BulkString(size, Bytes::from(bulk.as_bytes().to_owned())).to_string()
+        )
     }
 
     #[test]

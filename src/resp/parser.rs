@@ -138,7 +138,7 @@ mod tests {
     #[tokio::test]
     async fn should_parse_all_types() {
         let mut reader = BufReader::new(Cursor::new(
-            "*4\r\n+string\r\n-error\r\n$-1\r\n$4\r\nbulk\r\n".to_owned()
+            "*5\r\n+string\r\n-error\r\n:10\r\n$-1\r\n$4\r\nbulk\r\n".to_owned()
         ));
 
         let array_message: RESPMessage =
@@ -147,9 +147,10 @@ mod tests {
         assert!(matches!(
             array_message.as_slice(),
             [
-                RESPToken::ArraySize(4),
+                RESPToken::ArraySize(5),
                 RESPToken::SimpleString(simple),
                 RESPToken::Error(error),
+                RESPToken::Integer(10),
                 RESPToken::Null,
                 RESPToken::BulkString(4, bulk),
                 

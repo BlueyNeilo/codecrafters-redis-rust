@@ -37,7 +37,7 @@ impl RESPInterpreter {
                                     let mut store = shared_store.lock().await;
 
                                     if let Some(store_value) = store.get(&bytes_to_string(key)) {
-                                        RESPFrame::Bulk(Bytes::from(store_value.as_bytes().to_owned()))
+                                        RESPFrame::Bulk(Bytes::from(store_value))
                                     } else {
                                         RESPFrame::Null
                                     }
@@ -60,7 +60,7 @@ impl RESPInterpreter {
 
                                     if set_flags.get_flag {
                                         match prev_value {
-                                            Some(value) => RESPFrame::Bulk(Bytes::from(value.as_bytes().to_bytes())),
+                                            Some(value) => RESPFrame::Bulk(Bytes::from(value)),
                                             None => RESPFrame::Null,
                                         }
                                     } else {
@@ -135,4 +135,122 @@ impl RESPInterpreter {
 
 fn bytes_to_string(bytes: &Bytes) -> String {
     from_utf8(bytes).unwrap().to_owned()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::{thread::sleep, time::Duration};
+
+    use super::*;
+    use rstest::rstest;
+
+    #[tokio::test]
+    async fn should_interpret_non_array_frames() {
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Simple("Hi".to_owned())).await));
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Error("Err".to_owned())).await));
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Integer(-23)).await));
+        assert!(matches_pong(RESPInterpreter::interpret(
+            &RESPFrame::Bulk(Bytes::from("Hello world!"))
+        ).await));
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Null).await));
+    }
+
+    #[tokio::test]
+    async fn should_interpret_empty_array() {
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Array(vec![])).await));
+    }
+
+    #[tokio::test]
+    async fn should_interpret_ping_command() {
+        assert!(matches_pong(RESPInterpreter::interpret(&RESPFrame::Array(vec![
+            RESPFrame::Simple("PING".to_owned())
+        ])).await));
+    }
+
+    #[rstest]
+    #[case("hello")]
+    #[case("")]
+    #[case("two words")]    
+    #[tokio::test]
+    async fn should_interpret_echo_command(#[case] message: &str) {
+        let response = RESPInterpreter::interpret(&RESPFrame::Array(vec![
+            RESPFrame::Bulk(Bytes::from("ECHO")),
+            RESPFrame::Bulk(Bytes::from(message.to_owned()))
+        ])).await;
+
+        assert!(matches!(response, RESPFrame::Bulk(s) if s == message));
+
+        let lower_case_echo_response = RESPInterpreter::interpret(&RESPFrame::Array(vec![
+            RESPFrame::Bulk(Bytes::from("echo")),
+            RESPFrame::Bulk(Bytes::from(message.to_owned()))
+        ])).await;
+
+        assert!(matches_bulk(lower_case_echo_response, &message));
+    }
+
+    #[tokio::test]
+    async fn should_interpret_get_missing() {
+        let response = interpret_get("test_missing_key").await;
+        assert!(matches_null(response));
+    }
+
+    #[tokio::test]
+    async fn should_interpret_set_get() {
+        assert!(matches_null(interpret_get("test_setting_key").await));
+        assert!(matches_ok(interpret_set("test_setting_key hi").await));
+        assert!(matches_bulk(interpret_get("test_setting_key").await, "hi"));
+    }
+
+    // TODO: Simulate clock time instead of sleep
+    #[tokio::test]
+    async fn should_interpret_set_expiry() {
+        assert!(matches_null(interpret_get("test_expiry_key").await));
+
+        // Set and expire after 30ms
+        assert!(matches_ok(interpret_set("test_expiry_key existing PX 30").await));
+        assert!(matches_bulk(interpret_get("test_expiry_key").await, "existing"));
+
+        // Should still exist just before expiry
+        sleep(Duration::from_millis(25));
+        assert!(matches_bulk(interpret_get("test_expiry_key").await, "existing"));
+
+        // Should be null after expiry
+        sleep(Duration::from_millis(10));
+        assert!(matches_null(interpret_get("test_expiry_key").await));        
+    }
+
+    fn matches_pong(response: RESPFrame) -> bool {
+        matches!(response, RESPFrame::Simple(s) if s == "PONG")
+    }
+
+    fn matches_ok(response: RESPFrame) -> bool {
+        matches!(response, RESPFrame::Simple(s) if s == "OK")
+    }
+
+    fn matches_bulk(response: RESPFrame, message: &str) -> bool {
+        matches!(response, RESPFrame::Bulk(s) if s == message)
+    }
+
+    fn matches_null(response: RESPFrame) -> bool {
+        matches!(response, RESPFrame::Null)
+    }
+
+    async fn interpret_get(key: &str) -> RESPFrame {
+        RESPInterpreter::interpret(&RESPFrame::Array(vec![
+            RESPFrame::Bulk(Bytes::from("GET")),
+            RESPFrame::Bulk(Bytes::from(key.to_owned()))
+        ])).await
+    }
+
+    async fn interpret_set(options: &str) -> RESPFrame {
+        //let options = options.to_owned();
+        let mut set_array = vec![RESPFrame::Bulk(Bytes::from("SET"))];
+        let mut options_array = options.split_whitespace()
+            .map(|option| RESPFrame::Bulk(Bytes::from(option.to_owned())))
+            .collect::<Vec<RESPFrame>>();
+        set_array.append(&mut options_array);
+
+        RESPInterpreter::interpret(&RESPFrame::Array(set_array)).await
+    }
 }

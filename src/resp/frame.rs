@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn should_convert_frame_to_and_from_bulk_string(){
-        let message = vec![RESPToken::BulkString(4, Bytes::from("BULK".as_bytes()))];
+        let message = vec![RESPToken::BulkString(4, Bytes::from("BULK"))];
         
         let bulk_frame = RESPFrame::from(message);
         assert!(matches!(
@@ -179,7 +179,7 @@ mod tests {
             RESPToken::SimpleString("PING".to_owned()),
             RESPToken::Error("ERR bad".to_owned()),
             RESPToken::Integer(42),
-            RESPToken::BulkString(4, Bytes::from("BULK".as_bytes())),
+            RESPToken::BulkString(4, Bytes::from("BULK")),
             RESPToken::Null
         ];
         

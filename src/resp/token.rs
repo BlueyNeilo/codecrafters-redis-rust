@@ -37,23 +37,23 @@ mod tests {
     #[case("", "+\r\n")]
     #[case(" ", "+ \r\n")]
     #[case("Hello world", "+Hello world\r\n")]
-    fn should_serialise_simple_string(#[case] simple: String, #[case] expected_str: String) {
-        assert_eq!(expected_str, RESPToken::SimpleString(simple).to_string())
+    fn should_serialise_simple_string(#[case] simple: &str, #[case] expected_str: &str) {
+        assert_eq!(expected_str, RESPToken::SimpleString(simple.to_owned()).to_string())
     }
 
     #[rstest]
     #[case("ERR", "-ERR\r\n")]
     #[case("ERR bad message", "-ERR bad message\r\n")]
     #[case("", "-\r\n")]
-    fn should_serialise_error(#[case] error: String, #[case] expected_str: String) {
-        assert_eq!(expected_str, RESPToken::Error(error).to_string())
+    fn should_serialise_error(#[case] error: &str, #[case] expected_str: &str) {
+        assert_eq!(expected_str, RESPToken::Error(error.to_owned()).to_string())
     }
 
     #[rstest]
     #[case(0, ":0\r\n")]
     #[case(-10, ":-10\r\n")]
     #[case(23, ":23\r\n")]
-    fn should_serialise_int(#[case] int: i64, #[case] expected_str: String) {
+    fn should_serialise_int(#[case] int: i64, #[case] expected_str: &str) {
         assert_eq!(expected_str, RESPToken::Integer(int).to_string())
     }
 
@@ -62,10 +62,14 @@ mod tests {
     #[case(1, "a", "$1\r\na\r\n")]
     #[case(5, "hello", "$5\r\nhello\r\n")]
     #[case(12, "hello world!", "$12\r\nhello world!\r\n")]
-    fn should_serialise_bulk_string(#[case] size: u32, #[case] bulk: String, #[case] expected_str: String) {
+    fn should_serialise_bulk_string(
+        #[case] size: u32,
+        #[case] bulk: &str,
+        #[case] expected_str: &str
+    ) {
         assert_eq!(
             expected_str,
-            RESPToken::BulkString(size, Bytes::from(bulk.as_bytes().to_owned())).to_string()
+            RESPToken::BulkString(size, Bytes::from(bulk.to_owned())).to_string()
         )
     }
 
@@ -78,7 +82,7 @@ mod tests {
     #[case(0,"*0\r\n")]
     #[case(1,"*1\r\n")]
     #[case(5,"*5\r\n")]
-    fn should_serialise_array(#[case] size: u32, #[case] expected_str: String) {
+    fn should_serialise_array(#[case] size: u32, #[case] expected_str: &str) {
         assert_eq!(expected_str, RESPToken::ArraySize(size).to_string())
     }
 }

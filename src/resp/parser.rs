@@ -46,10 +46,10 @@ impl RESPParser {
 
             match prefix {
                 "+" => parsed_message.push(
-                    RESPToken::SimpleString(RESPParser::trim_token(&token_buf))
+                    RESPToken::SimpleString(RESPParser::trim_token(&token_buf).to_owned())
                 ),
                 "-" => parsed_message.push(
-                    RESPToken::Error(RESPParser::trim_token(&token_buf))
+                    RESPToken::Error(RESPParser::trim_token(&token_buf).to_owned())
                 ),
                 ":" => parsed_message.push(
                     RESPToken::Integer(RESPParser::trim_token(&token_buf).parse::<i64>()?)
@@ -101,8 +101,8 @@ impl RESPParser {
         Ok(())
     }
 
-    fn trim_token(token: &String) -> String {
-        token.get(1..).unwrap().trim().to_owned()
+    fn trim_token(token: &str) -> &str {
+        token.get(1..).unwrap().trim()
     }
 }
 
@@ -124,7 +124,7 @@ mod tests {
     #[tokio::test]
     async fn should_parse_simple() {
         let mut reader =
-            BufReader::new(Cursor::new("+PING\r\n".to_owned()));
+            BufReader::new(Cursor::new("+PING\r\n"));
 
         let simple_string_message: RESPMessage =
             RESPParser::parse(&mut reader).await.unwrap();
@@ -138,7 +138,7 @@ mod tests {
     #[tokio::test]
     async fn should_parse_all_types() {
         let mut reader = BufReader::new(Cursor::new(
-            "*5\r\n+string\r\n-error\r\n:10\r\n$-1\r\n$4\r\nbulk\r\n".to_owned()
+            "*5\r\n+string\r\n-error\r\n:10\r\n$-1\r\n$4\r\nbulk\r\n"
         ));
 
         let array_message: RESPMessage =
@@ -163,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn should_only_parse_up_to_array_length() {
         let mut reader = BufReader::new(Cursor::new(
-            "*2\r\n+many\r\n+things\r\n+to\r\n+say\r\n".to_owned()
+            "*2\r\n+many\r\n+things\r\n+to\r\n+say\r\n"
         ));
 
         let array_message: RESPMessage =
@@ -184,7 +184,7 @@ mod tests {
     #[tokio::test]
     async fn should_not_parse_empty_buffer() {
         let mut reader =
-            BufReader::new(Cursor::new("".to_owned()));
+            BufReader::new(Cursor::new(""));
 
         assert!(matches!(
             RESPParser::parse(&mut reader).await.err().unwrap(),
@@ -195,7 +195,7 @@ mod tests {
     #[tokio::test]
     async fn should_not_accept_array_token_after_start() {
         let mut reader =
-            BufReader::new(Cursor::new("*2\r\n+hi\r\n*1\r\n+nested\r\n".to_owned()));
+            BufReader::new(Cursor::new("*2\r\n+hi\r\n*1\r\n+nested\r\n"));
 
         assert!(matches!(
             RESPParser::parse(&mut reader).await.err().unwrap(),
@@ -206,7 +206,7 @@ mod tests {
     #[tokio::test]
     async fn should_not_parse_incomplete_array() {
         let mut reader =
-            BufReader::new(Cursor::new("*2\r\n+hi\r\n".to_owned()));
+            BufReader::new(Cursor::new("*2\r\n+hi\r\n"));
 
         assert!(matches!(
             RESPParser::parse(&mut reader).await.err().unwrap(),
@@ -217,7 +217,7 @@ mod tests {
     #[tokio::test]
     async fn should_not_parse_bad_integer() {
         let mut reader =
-            BufReader::new(Cursor::new("*1\r\n:one\r\n".to_owned()));
+            BufReader::new(Cursor::new("*1\r\n:one\r\n"));
 
         assert!(matches!(
             RESPParser::parse(&mut reader).await.err().unwrap(),
@@ -228,7 +228,7 @@ mod tests {
     #[tokio::test]
     async fn should_not_parse_bad_bulk_size() {
         let mut reader =
-            BufReader::new(Cursor::new("*1\r\n$-8\r\nnegative\r\n".to_owned()));
+            BufReader::new(Cursor::new("*1\r\n$-8\r\nnegative\r\n"));
 
         assert!(matches!(
             RESPParser::parse(&mut reader).await.err().unwrap(),
@@ -241,7 +241,7 @@ mod tests {
     #[case("*1\r\n","1")]
     #[case("+\r\n","")]
     #[case("+PING\r\n","PING")]
-    fn correctly_trims_token(#[case] token: String, #[case] trimmed: String) {
+    fn correctly_trims_token(#[case] token: &str, #[case] trimmed: &str) {
         assert_eq!(trimmed, RESPParser::trim_token(&token))
     }
 
@@ -251,8 +251,8 @@ mod tests {
             "*2\r\n$7\r\nCOMMAND\r\n$4\r\nDOCS\r\n",
             to_string(vec![
                 RESPToken::ArraySize(2),
-                RESPToken::BulkString(7, Bytes::from("COMMAND".as_bytes())),
-                RESPToken::BulkString(4, Bytes::from("DOCS".as_bytes())),
+                RESPToken::BulkString(7, Bytes::from("COMMAND")),
+                RESPToken::BulkString(4, Bytes::from("DOCS")),
             ])
         );
     }

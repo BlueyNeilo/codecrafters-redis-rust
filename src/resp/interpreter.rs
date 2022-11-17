@@ -109,7 +109,7 @@ impl RESPInterpreter {
         }
 
         if let [RESPFrame::Bulk(ttl_type), RESPFrame::Bulk(ttl_bytes)] = options_3 {
-            if let Some(ttl)= from_utf8(ttl_bytes.bytes()).unwrap()
+            if let Some(ttl)= from_utf8(ttl_bytes.chunk()).unwrap()
                 .to_owned()
                 .parse::<u64>()
                 .ok() {

@@ -19,7 +19,7 @@ impl RESPToken {
             RESPToken::Error(s) => format!("-{}\r\n", s),
             RESPToken::Integer(n) => format!(":{}\r\n", n),
             RESPToken::BulkString(size, s) => {
-                format!("${}\r\n{}\r\n", size, from_utf8(s.bytes()).unwrap())
+                format!("${}\r\n{}\r\n", size, from_utf8(s.chunk()).unwrap())
             },     
             RESPToken::Null => format!("$-1\r\n"),
             RESPToken::ArraySize(size) => format!("*{}\r\n", size),

@@ -5,11 +5,11 @@ authors = ["Codecrafters <hello@codecrafters.io>", "Patrick Neilson <patrick.nei
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.59"                                # error handling
-bytes = "0.5"                                    # helps manage buffers
-thiserror = "1.0.32"                             # error handling
+anyhow = "1.0.59"                                   # error handling
+bytes = "1.2.1"                                     # helps manage buffers
+thiserror = "1.0.32"                                # error handling
 tokio = { version = "1.21.0", features = ["full"] } # async networking
 
 [dev-dependencies]
-rstest = "0.15.0"                                # Testing
-once_cell = "1.16.0"                             # Mock clock sessions
+rstest = "0.15.0"                                   # Testing
+once_cell = "1.16.0"                                # Mock clock sessions

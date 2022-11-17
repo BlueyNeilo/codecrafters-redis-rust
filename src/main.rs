@@ -1,3 +1,4 @@
+mod clock;
 mod resp;
 mod store;
 mod server;

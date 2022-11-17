@@ -111,12 +111,12 @@ impl RESPInterpreter {
         if let [RESPFrame::Bulk(ttl_type), RESPFrame::Bulk(ttl_bytes)] = options_3 {
             if let Some(ttl)= from_utf8(ttl_bytes.bytes()).unwrap()
                 .to_owned()
-                .parse::<u128>()
+                .parse::<u64>()
                 .ok() {
                     match ttl_type.to_ascii_uppercase().as_slice() {
-                        b"EX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EX(ttl as u64)),
+                        b"EX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EX(ttl)),
                         b"PX" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PX(ttl)),
-                        b"EXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EXAT(ttl as u64)),
+                        b"EXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::EXAT(ttl)),
                         b"PXAT" => set_flags.ttl_flag = Some(SetCommandTTLFlag::PXAT(ttl)),
                         _ => {}
                     }
@@ -140,7 +140,9 @@ fn bytes_to_string(bytes: &Bytes) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::{thread::sleep, time::Duration};
+    use std::time::Duration;
+
+    use crate::clock::{MockClockSession, Clock};
 
     use super::*;
     use rstest::rstest;
@@ -205,6 +207,9 @@ mod tests {
     // TODO: Simulate clock time instead of sleep
     #[tokio::test]
     async fn should_interpret_set_expiry() {
+        MockClockSession::new();
+        Clock::mock_freeze();
+
         assert!(matches_null(interpret_get("test_expiry_key").await));
 
         // Set and expire after 30ms
@@ -212,11 +217,11 @@ mod tests {
         assert!(matches_bulk(interpret_get("test_expiry_key").await, "existing"));
 
         // Should still exist just before expiry
-        sleep(Duration::from_millis(25));
+        Clock::mock_advance(Duration::from_millis(29));
         assert!(matches_bulk(interpret_get("test_expiry_key").await, "existing"));
 
         // Should be null after expiry
-        sleep(Duration::from_millis(10));
+        Clock::mock_advance(Duration::from_millis(1));
         assert!(matches_null(interpret_get("test_expiry_key").await));        
     }
 

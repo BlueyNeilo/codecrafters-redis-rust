@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::{Arc, Once}, time::{UNIX_EPOCH, SystemTime}};
+use std::{collections::HashMap, sync::{Arc, Once}, time::UNIX_EPOCH};
 
 use tokio::sync::Mutex;
 
-use crate::resp::command::{SetCommandFlags, SetCommandExistFlag, SetCommandTTLFlag};
+use crate::{resp::command::{SetCommandFlags, SetCommandExistFlag, SetCommandTTLFlag}, clock::Clock};
 
-type EpochMillisecond = u128;
+type EpochMillisecond = u64;
 
 /**
  * Storage implementation for Redis
@@ -68,13 +68,13 @@ impl RedisStore {
         if let Some(ttl_flag) = &flags.ttl_flag {
             let maybe_ttl: Option<EpochMillisecond> = match ttl_flag {
                 SetCommandTTLFlag::EX(seconds) => {
-                    Some(Self::get_unix_time() + (*seconds as u128 * 1000))
+                    Some(Self::get_unix_time() + (*seconds * 1000))
                 },
                 SetCommandTTLFlag::PX(milliseconds) => {
                     Some(Self::get_unix_time() + *milliseconds)
                 },
                 SetCommandTTLFlag::EXAT(seconds) => {
-                    Some(*seconds as u128 * 1000)
+                    Some(*seconds * 1000)
                 },
                 SetCommandTTLFlag::PXAT(milliseconds) => {
                     Some(*milliseconds)
@@ -102,7 +102,7 @@ impl RedisStore {
      */
     fn try_expire(&mut self, key: &String) -> bool {
         if let Some(ttl) = self.ttl_store.get(key) {
-            if Self::get_unix_time() > *ttl {
+            if Self::get_unix_time() >= *ttl {
                 // Clean up expired key
                 println!("Cleaning up for expired key {}: {}", key, ttl);
                 self.ttl_store.remove(key);
@@ -115,6 +115,8 @@ impl RedisStore {
     }
 
     fn get_unix_time() -> EpochMillisecond {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+        Clock::now()
+            .duration_since(UNIX_EPOCH).unwrap()
+            .as_millis() as EpochMillisecond
     }
 }

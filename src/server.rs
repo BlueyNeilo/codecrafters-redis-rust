@@ -17,7 +17,7 @@ pub async fn init() {
 }
 
 pub async fn listen() {
-    let mut listener = TcpListener::bind("127.0.0.1:6379")
+    let listener = TcpListener::bind("127.0.0.1:6379")
         .await.expect("Unable to listen to port");
     println!("Listening from localhost:6379");
 

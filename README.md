@@ -41,7 +41,7 @@ In the main branch, I am solving the extra challenges using different dependenci
 
 ## Extra Challenges Planned
 
-- [ ] Write tests in rust that prove thread safety
+- [X] Write tests in rust that prove thread safety
 - [ ] Persistence + Recovery (RDB snapshot and/or Append-Only File)
 - [ ] High Availability communication + failover (Keep replica server in sync, replication id/offset)
 - [ ] Authentication

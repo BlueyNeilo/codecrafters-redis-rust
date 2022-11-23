@@ -56,7 +56,7 @@ impl RESPInterpreter {
                                         store.get(&bytes_to_string(key))
                                     } else { None };
 
-                                    let update_success = store.set(bytes_to_string(key), bytes_to_string(value), &set_flags);
+                                    let update_success = store.set(&bytes_to_string(key), &bytes_to_string(value), &set_flags);
 
                                     if set_flags.get_flag {
                                         match prev_value {
